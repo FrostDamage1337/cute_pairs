@@ -316,7 +316,8 @@ switch ($arr["method"]) {
         $arr = $arr["data"];
 
         $id = $arr["id"];
-        $result = $db->query("SELECT * FROM tinder_matching WHERE isMatched = 1 AND (fromUser = {$id} OR toUser = {$id})");
+        $result = $db->query("SELECT a.id as id, a.fromUser as fromUser, a.toUser as toUser, a.isMatched as isMatched, b.name as name, ". 
+            "b.photo as photo, b.surname as surname FROM tinder_matching as a INNER JOIN tinder_users as b ON (b.id = a.toUser) WHERE a.isMatched = 1 AND (a.fromUser = {$id} OR a.toUser = {$id})");
         $arr = [];
         while ($row = $result->fetch_assoc()) {
             $arr[] = [
@@ -324,6 +325,9 @@ switch ($arr["method"]) {
                 'fromUser' => $row['fromUser'],
                 'toUser' => $row['toUser'],
                 'isMatched' => $row['isMatched'],
+                'photo' => $row['photo'],
+                'name' => $row['name'],
+                'surname' => $row['surname'],
             ];
         }
         echo json_encode([
@@ -331,4 +335,88 @@ switch ($arr["method"]) {
             'response' => $arr,
         ]);
         break;
+    case 'getChats':
+        $arr = $arr['data'];
+
+        $user_id = isset($arr['user_id']) ? $arr['user_id'] : 0;
+        $user2_id = isset($arr['user2_id']) ? $arr['user2_id'] : 0;
+
+        $result = $db->query("SELECT * FROM chat WHERE user_id = {$user_id} OR user2_id = {$user_id}");
+        $arr = [];
+        while ($row = $result->fetch_assoc()) {
+            $arr[] = [
+                'id' => $row['id'],
+                'user_id' => $row['user_id'],
+                'chat_name' => $row['chat_name'],
+                'user2_id' => $row['user2_id']
+            ];
+        }
+
+        echo json_encode([
+            'result' => 'success',
+            'response' => $arr
+        ]);
+        break;
+    case 'createChat':
+        $arr = $arr['data'];
+        $user_id = $arr['user_id'];
+        $user2_id = $arr['user2_id'];
+        $chat_name = $arr['chat_name'];
+
+        if ($db->query("INSERT INTO chat (user_id, user2_id, chat_name) VALUES ({$user_id}, {$user2_id}, '{$chat_name}')")) {
+            echo json_encode([
+                'result' => 'success',
+                'response' => 'OK'
+            ]);
+        } else {
+            echo json_encode([
+                'result' => 'error',
+                'response' => 'Error'
+            ]);
+        }
+        
+        break;
+    case 'sendMessage':
+        $arr = $arr['data'];
+
+        $message = $arr['message'];
+        $chatid = $arr['chatid'];
+        $userid = $arr['userid'];
+        $to_user_id = $arr['to_user_id'];
+
+        if ($db->query("INSERT INTO tinder_messages (message, chatid, userid, to_user_id, sent_time) VALUES ('{$message}', {$chatid}, {$userid}, {$to_user_id}, NOW())")) {
+            echo json_encode([
+                'result' => 'success',
+                'response' => 'OK'
+            ]);
+        } else {
+            echo json_encode([
+                'result' => 'error',
+                'response' => 'Error'
+            ]);
+        }
+        break;
+    case 'getChatMessages':
+        $arr = $arr['data'];
+
+        $chatid = $arr['chatid'];
+
+        $result = $db->query("SELECT * FROM tinder_messages WHERE chatid = {$chatid}");
+        $arr = [];
+        while ($row = $result->fetch_assoc()) {
+            $arr[] = [
+                'message' => $row['message'],
+                'chatid' => $row['chatid'],
+                'userid' => $row['userid'],
+                'to_user_id' => $row['to_user_id'],
+                'sent_time' => $row['sent_time'],
+            ];
+        }
+
+        echo json_encode([
+            'result' => 'success',
+            'response' => $arr
+        ]);
+    break;
+    
 }
